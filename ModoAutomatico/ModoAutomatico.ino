@@ -68,47 +68,65 @@ public:
 
 
 const int PIN_LDR = A0;
-const int PIN_MODO_AUTOMATICO = 7;   //Aqui cambiar por los pines analogicos
+const int PIN_MODO_AUTOMATICO = 6;   //Aqui cambiar por los pines analogicos
 const int PIN_BOTON = 2;  //Lo mismo en este
-const int PIN_MODO_MANUAL = 4; // Y en este
+const int PIN_MODO_MANUAL = 3; // Y en este
+const int PIN_BOTON_MODOS = 8;
 
 Led luzAuto("LUZ_MODO_AUTO", PIN_MODO_AUTOMATICO);
 SensorLDR ldr("LDR", PIN_LDR);
 Boton botonAuto("CAMBIAR_MODO_AUTO", PIN_BOTON);
+Boton botonModos("CAMBIAR_MODOS_PERSONALIZADOS", PIN_BOTON_MODOS);
 Led luzManual("LUZ_MODO_MANUAL", PIN_MODO_MANUAL);
 
 bool modoAutomatico = true;
-bool modoManual = false
+bool modoManual = false ;
+bool modoFiesta = false ;
+bool modoRelajacion = false ;
+bool modoNoche = false ;
+bool modoLectura = false ;
+
 const int umbralLuz = 120;
 
 bool botonPrev = false;
 
+
+
 void setup() {
   luzAuto.iniciar();
+  luzManual.iniciar();
   ldr.iniciar();
   botonAuto.iniciar();
 }
 
+
+
 void loop() {
   bool autoAhora = (botonAuto.leer() == 1);
+  bool modosAhora = (botonModos.leer() == 1) ;
 
   if (autoAhora && !botonPrev) {
     modoAutomatico = !modoAutomatico;
-    modoManual = !modoManual
   }
   botonPrev = autoAhora;
 
   if (modoAutomatico) {
     int luz = ldr.leer();
     bool estaOscuro = (luz < umbralLuz);
+    luzManual.escribir(0);
+    delay(20);
     luzAuto.escribir(estaOscuro ? 1 : 0);
   }
-  if (modoManual) {
+  else{
     luzAuto.escribir(0);
     delay(20);
     luzManual.escribir(1);
-    
   }
 
   delay(20);
-}
+
+  
+  
+
+
+};

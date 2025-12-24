@@ -7,10 +7,9 @@ protected:
 public:
   virtual void iniciar() = 0;
   virtual int leer() { return -1; }
-  virtual void escribir(int v) { }
+  virtual void escribir(int v) {}
   virtual ~Componente() {}
 };
-
 
 class Led : public Componente {
 public:
@@ -25,12 +24,11 @@ public:
     digitalWrite(Pin, LOW);
   }
 
-  void escribir(int v) override {
-    Estado = (v != 0);
-    digitalWrite(Pin, Estado ? HIGH : LOW);
+  void escribir(int pwm) override {
+    pwm = constrain(pwm, 0, 255);
+    analogWrite(Pin, pwm);
   }
-}; 
-
+};
 
 class Boton : public Componente {
 public:
@@ -44,89 +42,100 @@ public:
     pinMode(Pin, INPUT_PULLUP);
   }
 
-  int leer() override {
-    Estado = (digitalRead(Pin) == LOW);
-    return Estado ? 1 : 0;
+  bool presionado() {
+    return digitalRead(Pin) == LOW;
   }
 };
-
 
 class SensorLDR : public Componente {
 public:
   SensorLDR(const char* n, int p) {
     Nombre = n;
     Pin = p;
-    Estado = true;
   }
 
-  void iniciar() override { }
+  void iniciar() override {}
 
   int leer() override {
-    return analogRead(Pin);
+    return analogRead(Pin); 
   }
 };
 
-
 const int PIN_LDR = A0;
-const int PIN_MODO_AUTOMATICO = 6;   //Aqui cambiar por los pines analogicos
-const int PIN_BOTON = 2;  //Lo mismo en este
-const int PIN_MODO_MANUAL = 3; // Y en este
-const int PIN_BOTON_MODOS = 8;
+const int PIN_LED_AUTO = 6;
+const int PIN_LED_MANUAL = 3;
+const int PIN_BOTON_MODO = 2;
+const int PIN_BOTON_INTENSIDAD = 8;
 
-Led luzAuto("LUZ_MODO_AUTO", PIN_MODO_AUTOMATICO);
+Led ledAuto("LED_AUTO", PIN_LED_AUTO);
+Led ledManual("LED_MANUAL", PIN_LED_MANUAL);
 SensorLDR ldr("LDR", PIN_LDR);
-Boton botonAuto("CAMBIAR_MODO_AUTO", PIN_BOTON);
-Boton botonModos("CAMBIAR_MODOS_PERSONALIZADOS", PIN_BOTON_MODOS);
-Led luzManual("LUZ_MODO_MANUAL", PIN_MODO_MANUAL);
+Boton botonModo("BOTON_MODO", PIN_BOTON_MODO);
+Boton botonIntensidad("BOTON_INTENSIDAD", PIN_BOTON_INTENSIDAD);
 
 bool modoAutomatico = true;
-bool modoManual = false ;
-bool modoFiesta = false ;
-bool modoRelajacion = false ;
-bool modoNoche = false ;
-bool modoLectura = false ;
+int nivelLuz = 0; 
 
+const int nivelesPWM[4] = { 50, 120, 200, 255 };
 const int umbralLuz = 120;
 
-bool botonPrev = false;
+bool lastBotonModo = false;
+bool lastBotonIntensidad = false;
 
+void leerCambioModo() {
+  bool estadoActual = botonModo.presionado();
 
-
-void setup() {
-  luzAuto.iniciar();
-  luzManual.iniciar();
-  ldr.iniciar();
-  botonAuto.iniciar();
-}
-
-
-
-void loop() {
-  bool autoAhora = (botonAuto.leer() == 1);
-  bool modosAhora = (botonModos.leer() == 1) ;
-
-  if (autoAhora && !botonPrev) {
+  if (estadoActual && !lastBotonModo) {
     modoAutomatico = !modoAutomatico;
   }
-  botonPrev = autoAhora;
+
+  lastBotonModo = estadoActual;
+}
+
+void leerCambioIntensidad() {
+  bool estadoActual = botonIntensidad.presionado();
+
+  if (estadoActual && !lastBotonIntensidad) {
+    nivelLuz++;
+    if (nivelLuz > 3) nivelLuz = 0;
+  }
+
+  lastBotonIntensidad = estadoActual;
+}
+
+void setup() {
+  Serial.begin(9600);
+
+  ledAuto.iniciar();
+  ledManual.iniciar();
+  botonModo.iniciar();
+  botonIntensidad.iniciar();
+  ldr.iniciar();
+}
+
+void loop() {
+
+  leerCambioModo();
+  leerCambioIntensidad();
+
+  int intensidad = nivelesPWM[nivelLuz];
 
   if (modoAutomatico) {
     int luz = ldr.leer();
-    bool estaOscuro = (luz < umbralLuz);
-    luzManual.escribir(0);
-    delay(20);
-    luzAuto.escribir(estaOscuro ? 1 : 0);
+    bool oscuro = luz < umbralLuz;
+
+    ledManual.escribir(0);
+    ledAuto.escribir(oscuro ? intensidad : 0);
+
+    Serial.print("ANIVEL DE LUZ : ");
+    Serial.println(luz);
   }
-  else{
-    luzAuto.escribir(0);
-    delay(20);
-    luzManual.escribir(1);
+  else {
+    ledAuto.escribir(0);
+    ledManual.escribir(intensidad);
+
+    Serial.println("MANUAL");
   }
 
-  delay(20);
-
-  
-  
-
-
-};
+  delay(50);
+}

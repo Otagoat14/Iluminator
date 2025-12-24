@@ -76,7 +76,7 @@ Boton botonIntensidad("BOTON_INTENSIDAD", PIN_BOTON_INTENSIDAD);
 bool modoAutomatico = true;
 int nivelLuz = 0; 
 
-const int nivelesPWM[4] = { 50, 120, 200, 255 };
+const int nivelesPWM[3] = { 50, 120, 200 };
 const int umbralLuz = 120;
 
 bool lastBotonModo = false;
@@ -97,10 +97,20 @@ void leerCambioIntensidad() {
 
   if (estadoActual && !lastBotonIntensidad) {
     nivelLuz++;
-    if (nivelLuz > 3) nivelLuz = 0;
+    if (nivelLuz > 3) {
+      nivelLuz = 0;
+    }
   }
 
   lastBotonIntensidad = estadoActual;
+}
+
+int calcularIntensidad() {
+  if (nivelLuz < 3) {
+    return nivelesPWM[nivelLuz];
+  } else {
+    return (millis() / 200) % 2 ? 255 : 0;
+  }
 }
 
 void setup() {
@@ -114,11 +124,10 @@ void setup() {
 }
 
 void loop() {
-
   leerCambioModo();
   leerCambioIntensidad();
 
-  int intensidad = nivelesPWM[nivelLuz];
+  int intensidad = calcularIntensidad();
 
   if (modoAutomatico) {
     int luz = ldr.leer();
@@ -126,15 +135,10 @@ void loop() {
 
     ledManual.escribir(0);
     ledAuto.escribir(oscuro ? intensidad : 0);
-
-    Serial.print("ANIVEL DE LUZ : ");
-    Serial.println(luz);
   }
   else {
     ledAuto.escribir(0);
     ledManual.escribir(intensidad);
-
-    Serial.println("MANUAL");
   }
 
   delay(50);
